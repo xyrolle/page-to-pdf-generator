@@ -21,7 +21,7 @@ npx tsc
 ## Usage
 
 ```bash
-node generate-pdf.js [url] [outputFilename] [initialDelay] [pageDelay] [width] [height] [deviceTypes...]
+node generate-pdf.js [url] [outputFilename] [initialDelay] [pageDelay] [deviceTypes...]
 ```
 
 If no arguments are provided, the tool will prompt you for the necessary information.
@@ -32,8 +32,6 @@ If no arguments are provided, the tool will prompt you for the necessary informa
 - **outputFilename**: The name of the output PDF file (extension will be added if missing)
 - **initialDelay**: Initial delay in seconds before capturing the page (0-30 seconds)
 - **pageDelay**: Delay between capturing pages in seconds for multi-page content (0-10 seconds)
-- **width**: PDF width in pixels (default: 794, which corresponds to A4 width)
-- **height**: PDF height in pixels (default: 1123, which corresponds to A4 height)
 - **deviceTypes**: One or more device types to generate PDFs for (`desktop`, `tablet`, `mobile`)
 
 ### Device Presets
@@ -54,12 +52,14 @@ If you run the tool without command-line arguments, it will enter interactive mo
 node generate-pdf.js
 ```
 
-The interactive mode includes a checkbox selection for device types, allowing you to generate PDFs for multiple device types in a single run.
+The interactive mode includes:
+- Checkbox selection for device types (desktop, tablet, mobile)
+- Delay settings for page capture
 
 ## Features
 
 - Automatically handles popups and dialogs
-- Supports custom page dimensions
+- Generates PDFs using predefined device dimensions
 - Handles multi-page content with configurable delays
 - Checks website availability before attempting to generate PDF
 - Interactive mode for easy use

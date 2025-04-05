@@ -1,10 +1,9 @@
-import puppeteer, { PaperFormat } from 'puppeteer';
+import puppeteer from 'puppeteer';
 import https from 'https';
 import http from 'http';
 import { URL } from 'url';
 import inquirer from 'inquirer';
 import path from 'path';
-import fs from 'fs';
 
 interface DeviceViewport {
   width: number;
@@ -16,9 +15,9 @@ interface DeviceViewport {
 
 const DEVICE_PRESETS: Record<string, DeviceViewport> = {
   desktop: {
-    width: 1920,
-    height: 1080,
-    deviceScaleFactor: 1,
+    width: 1440,
+    height: 900,
+    deviceScaleFactor: 2,
     isMobile: false,
     hasTouch: false
   },
@@ -43,10 +42,7 @@ async function promptForArgs(): Promise<{
   outputFilename: string; 
   initialDelay: number;
   pageDelay: number;
-  width: number;
-  height: number;
   deviceTypes: string[];
-  customViewport: boolean;
 }> {
   console.log('Landing Page PDF Generator');
   console.log('--------------------------------');
@@ -83,7 +79,7 @@ async function promptForArgs(): Promise<{
     name: 'deviceTypes',
     message: 'Select device types to generate PDFs for:',
     choices: [
-      { name: 'Desktop (1920×1080)', value: 'desktop', checked: true },
+      { name: 'Desktop (1440×900)', value: 'desktop', checked: true },
       { name: 'Tablet (768×1024)', value: 'tablet' },
       { name: 'Mobile (375×667)', value: 'mobile' }
     ],
@@ -94,48 +90,6 @@ async function promptForArgs(): Promise<{
       return true;
     }
   });
-  
-  const customViewportAnswer = await inquirer.prompt({
-    type: 'confirm',
-    name: 'customViewport',
-    message: 'Do you want to specify custom dimensions?',
-    default: false,
-    when: () => deviceTypeAnswer.deviceTypes.length > 0
-  });
-  
-  let width = 794;  // Default A4 width
-  let height = 1123; // Default A4 height
-  
-  if (customViewportAnswer.customViewport) {
-    const widthAnswer = await inquirer.prompt({
-      type: 'number',
-      name: 'width',
-      message: 'PDF width in pixels:',
-      default: 794, // Default A4 width
-      validate: (input: number | undefined) => {
-        if (input === undefined) return 'Please enter a number';
-        return input > 0 && input <= 5000
-          ? true
-          : 'Width must be between 1 and 5000 pixels';
-      }
-    });
-    
-    const heightAnswer = await inquirer.prompt({
-      type: 'number',
-      name: 'height',
-      message: 'PDF height in pixels:',
-      default: 1123, // Default A4 height
-      validate: (input: number | undefined) => {
-        if (input === undefined) return 'Please enter a number';
-        return input > 0 && input <= 5000
-          ? true
-          : 'Height must be between 1 and 5000 pixels';
-      }
-    });
-    
-    width = widthAnswer.width;
-    height = heightAnswer.height;
-  }
   
   const initialDelayAnswer = await inquirer.prompt({
     type: 'number',
@@ -168,10 +122,7 @@ async function promptForArgs(): Promise<{
     outputFilename: filenameAnswer.outputFilename,
     initialDelay: initialDelayAnswer.initialDelay,
     pageDelay: pageDelayAnswer.pageDelay,
-    width,
-    height,
-    deviceTypes: deviceTypeAnswer.deviceTypes,
-    customViewport: customViewportAnswer.customViewport || false
+    deviceTypes: deviceTypeAnswer.deviceTypes
   };
 }
 
@@ -217,10 +168,7 @@ async function generatePDF(
   outputFilename: string = 'landing-page', 
   initialDelay: number = 0,
   pageDelay: number = 0,
-  width: number = 794,
-  height: number = 1123,
-  deviceTypes: string[] = ['desktop'],
-  customViewport: boolean = false
+  deviceTypes: string[] = ['desktop']
 ): Promise<void> {
   const isHealthy = await checkSiteHealth(url);
   if (!isHealthy) {
@@ -229,7 +177,6 @@ async function generatePDF(
 
   const browser = await puppeteer.launch();
   
-  // Generate PDFs for each selected device type
   for (const deviceType of deviceTypes) {
     const page = await browser.newPage();
     
@@ -238,18 +185,11 @@ async function generatePDF(
       await dialog.dismiss();
     });
     
-    if (customViewport) {
-      // If custom viewport is specified, use the provided dimensions
-      await page.setViewport({ width, height });
-    } else {
-      // Otherwise use device preset
-      const viewport = DEVICE_PRESETS[deviceType];
-      await page.setViewport(viewport);
-      
-      if (deviceType === 'mobile' || deviceType === 'tablet') {
-        // Set user agent for mobile/tablet
-        await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1');
-      }
+    const viewport = DEVICE_PRESETS[deviceType];
+    await page.setViewport(viewport);
+    
+    if (deviceType === 'mobile' || deviceType === 'tablet') {
+      await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1');
     }
     
     await page.goto(url, { waitUntil: 'networkidle0' });
@@ -290,14 +230,13 @@ async function generatePDF(
       }, initialDelay * 1000);
     }
 
-    // Create device-specific filename
     const fileExt = '.pdf';
     const fileBaseName = path.basename(outputFilename, fileExt);
-    const deviceSpecificFilename = `${fileBaseName}${deviceTypes.length > 1 ? `-${deviceType}` : ''}${fileExt}`;
+    const deviceSpecificFilename = fileBaseName + (deviceTypes.length > 1 ? '-' + deviceType : '') + fileExt;
     
-    const viewport = page.viewport();
-    if (viewport) {
-      console.log(`[${deviceType}] Generating PDF with viewport: ${viewport.width}x${viewport.height}`);
+    const viewportSize = page.viewport();
+    if (viewportSize) {
+      console.log(`[${deviceType}] Generating PDF with viewport: ${viewportSize.width}x${viewportSize.height}`);
     } else {
       console.log(`[${deviceType}] Generating PDF`);
     }
@@ -309,7 +248,8 @@ async function generatePDF(
         return document.body.scrollHeight;
       });
       
-      const currentHeight = page.viewport()?.height || height;
+      const currentViewport = page.viewport();
+      const currentHeight = currentViewport?.height ?? DEVICE_PRESETS[deviceType].height;
       const numPages = Math.ceil(pageHeight / currentHeight);
       console.log(`[${deviceType}] Content requires approximately ${numPages} pages`);
       
@@ -329,8 +269,8 @@ async function generatePDF(
     
     await page.pdf({
       path: deviceSpecificFilename,
-      width: `${page.viewport()?.width || width}px`,
-      height: `${page.viewport()?.height || height}px`,
+      width: `${viewportSize?.width ?? viewport.width}px`,
+      height: `${viewportSize?.height ?? viewport.height}px`,
       printBackground: true
     });
 
@@ -347,10 +287,7 @@ async function main(): Promise<void> {
   let outputFilename = process.argv[3];
   let initialDelay = process.argv[4] ? parseInt(process.argv[4], 10) : undefined;
   let pageDelay = process.argv[5] ? parseInt(process.argv[5], 10) : undefined;
-  let width = process.argv[6] ? parseInt(process.argv[6], 10) : undefined;
-  let height = process.argv[7] ? parseInt(process.argv[7], 10) : undefined;
   let deviceTypes: string[] = [];
-  let customViewport = false;
   
   if (!url) {
     try {
@@ -359,27 +296,21 @@ async function main(): Promise<void> {
       outputFilename = args.outputFilename;
       initialDelay = args.initialDelay;
       pageDelay = args.pageDelay;
-      width = args.width;
-      height = args.height;
       deviceTypes = args.deviceTypes;
-      customViewport = args.customViewport;
     } catch (error) {
       console.error('Error during interactive prompt:', error);
       process.exit(1);
     }
-  } else if (process.argv.length > 7) {
-    // If command line arguments are provided for device types
-    deviceTypes = process.argv.slice(8).filter(arg => 
+  } else if (process.argv.length > 5) {
+    deviceTypes = process.argv.slice(6).filter(arg => 
       ['desktop', 'tablet', 'mobile'].includes(arg)
     );
     
     if (deviceTypes.length === 0) {
-      deviceTypes = ['desktop']; // Default to desktop if no valid device type is provided
+      deviceTypes = ['desktop'];
     }
-    
-    customViewport = width !== undefined && height !== undefined;
   } else {
-    deviceTypes = ['desktop']; // Default to desktop
+    deviceTypes = ['desktop'];
   }
   
   if (!url) {
@@ -391,13 +322,12 @@ async function main(): Promise<void> {
     outputFilename = 'landing-page';
   }
   
-  // Add .pdf extension if not present
   if (!outputFilename.endsWith('.pdf')) {
     outputFilename += '.pdf';
   }
   
   try {
-    await generatePDF(url, outputFilename, initialDelay, pageDelay, width, height, deviceTypes, customViewport);
+    await generatePDF(url, outputFilename, initialDelay, pageDelay, deviceTypes);
   } catch (error) {
     console.error('Error generating PDF:', error);
     process.exit(1);
