@@ -1,6 +1,6 @@
 # Page to PDF Generator
 
-A command-line tool for generating PDF files from web pages with customizable options.
+A command-line tool for generating PDF files from web pages with customizable options, supporting multiple device types (desktop, tablet, mobile).
 
 ## Installation
 
@@ -21,7 +21,7 @@ npx tsc
 ## Usage
 
 ```bash
-node generate-pdf.js [url] [outputFilename] [initialDelay] [pageDelay] [width] [height]
+node generate-pdf.js [url] [outputFilename] [initialDelay] [pageDelay] [width] [height] [deviceTypes...]
 ```
 
 If no arguments are provided, the tool will prompt you for the necessary information.
@@ -29,11 +29,22 @@ If no arguments are provided, the tool will prompt you for the necessary informa
 ### Options
 
 - **url**: The URL of the web page to convert (e.g., https://example.com)
-- **outputFilename**: The name of the output PDF file (must end with .pdf)
+- **outputFilename**: The name of the output PDF file (extension will be added if missing)
 - **initialDelay**: Initial delay in seconds before capturing the page (0-30 seconds)
 - **pageDelay**: Delay between capturing pages in seconds for multi-page content (0-10 seconds)
 - **width**: PDF width in pixels (default: 794, which corresponds to A4 width)
 - **height**: PDF height in pixels (default: 1123, which corresponds to A4 height)
+- **deviceTypes**: One or more device types to generate PDFs for (`desktop`, `tablet`, `mobile`)
+
+### Device Presets
+
+The tool includes the following device presets:
+
+- **Desktop**: 1920×1080 pixels
+- **Tablet**: 768×1024 pixels
+- **Mobile**: 375×667 pixels
+
+When selecting multiple device types, the tool will generate separate PDFs for each type, appending the device type to the filename (e.g., `landing-page-desktop.pdf`, `landing-page-mobile.pdf`).
 
 ### Interactive Mode
 
@@ -43,6 +54,8 @@ If you run the tool without command-line arguments, it will enter interactive mo
 node generate-pdf.js
 ```
 
+The interactive mode includes a checkbox selection for device types, allowing you to generate PDFs for multiple device types in a single run.
+
 ## Features
 
 - Automatically handles popups and dialogs
@@ -50,6 +63,8 @@ node generate-pdf.js
 - Handles multi-page content with configurable delays
 - Checks website availability before attempting to generate PDF
 - Interactive mode for easy use
+- Generate PDFs for multiple device types (desktop, tablet, mobile)
+- Device-specific user agents for mobile and tablet views
 
 ## License
 
